@@ -1,0 +1,15 @@
+service: whats-gpt
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: go1.x
+  region: us-east-1
+
+functions:
+  chat:
+    image: 585707473057.dkr.ecr.us-east-1.amazonaws.com/hakamada/whats-gpt:beta
+    events:
+      - httpApi:
+          path: /
+          method: post
