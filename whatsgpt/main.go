@@ -22,19 +22,19 @@ type Message struct {
 type ChatGptRequest struct {
 	Model     string    `json:"model"`
 	Messages  []Message `json:"messages"`
-	MaxTokens int       `json:"maxTokens,omitempty"`
+	MaxTokens int       `json:"max_tokens,omitempty"`
 }
 
 type Response struct {
 	Id      string   `json:"id"`
-	Object  string   `json:object`
+	Object  string   `json:"object"`
 	Created int      `json:"created"`
-	Choices []Choice `json:"choice"`
+	Choices []Choice `json:"choices"`
 	Usage   Usage    `json:"usage"`
 }
 
 type Choice struct {
-	Index        string  `json:"index"`
+	Index        int     `json:"index"`
 	Message      Message `json:"message"`
 	FinishReason string  `json:"finish_reason"`
 }
@@ -66,7 +66,6 @@ func GenerateGptText(query string) (string, error) {
 	}
 
 	httpRequest := createHttpRequest(err, reqJson)
-
 	httpResponse, err := http.DefaultClient.Do(httpRequest) //envia a httpRequest e recebe a httpResponse
 	if err != nil {
 		return "", err
@@ -74,8 +73,13 @@ func GenerateGptText(query string) (string, error) {
 	defer httpResponse.Body.Close()
 
 	responseBody, err := ioutil.ReadAll(httpResponse.Body)
+	log.Print("response:", string(responseBody))
 	var response Response
 	err = json.Unmarshal(responseBody, &response)
+	if err != nil {
+		return "", err
+	}
+	log.Print("response:", response)
 	return response.Choices[0].Message.Content, nil
 }
 
@@ -86,7 +90,7 @@ func createHttpRequest(err error, reqJson []byte) *http.Request {
 		bytes.NewBuffer(reqJson),
 	)
 	httpRequest.Header.Set("Content-Type", "application/json")
-	httpRequest.Header.Set("Authorization", "Bearer ")
+	httpRequest.Header.Set("Authorization", "Bearer {your token key here}")
 	return httpRequest
 }
 
