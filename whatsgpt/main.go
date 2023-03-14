@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/aws/aws-lambda-go/lambda"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -136,5 +135,5 @@ func process(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 }
 
 func main() {
-	lambda.Start(process)
+	GenerateGptText("o que é uma mosca?")
 }

@@ -5,18 +5,10 @@ provider:
   name: aws
   runtime: go1.x
   region: us-east-1
-  account: !Ref 'AWS:AccountId'
-
-hooks:
-  'before:deploy:deploy':
-    - docker build -t $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION .
-    - $(aws ecr get-login --no-include-email)
-    - docker tag $DOCKER_IMAGE:$DOCKER_IMAGE_VERSION
-    - docker push $DOCKER_REPOSITORY
 
 functions:
   chat:
-    image: ${env:DOCKER_IMAGE}
+    image: <ACCOUND_ID>.dkr.ecr.us-east-1.amazonaws.com/hakamada/whats-gpt:beta
     events:
       - httpApi:
           path: /
