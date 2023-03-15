@@ -15,10 +15,10 @@ You can use this commands bellow, to make it:
 aws ecr get-login-password --region <ACCOUNT REGION> | docker login --username AWS --password-stdin <ACCOUNT ID>.dkr.ecr.<ACCOUNT REGION>.amazonaws.com
 
 -- to build your dockerfile with a ECR repo name, use this: 
-docker build -t <ACCOUNT ID>.dkr.ecr.<ACCOUNT REGION>.amazonaws.com\<IMAGE NAME>:<IMAGE VERSION> .
+docker build -t <ACCOUNT ID>.dkr.ecr.<ACCOUNT REGION>.amazonaws.com/<IMAGE NAME>:<IMAGE VERSION> .
 
 -- to send your image to ECR, use this:
-docker push <ACCOUNT ID>.dkr.ecr.<ACCOUNT REGION>.amazonaws.com\<IMAGE NAME>:<IMAGE VERSION>
+docker push <ACCOUNT ID>.dkr.ecr.<ACCOUNT REGION>.amazonaws.com/<IMAGE NAME>:<IMAGE VERSION>
 ```
 
 With your ECR configured and repository name is aponted on serverless.yaml on `functions.chat.image` you can deploy the application using de serverless deploy command.
