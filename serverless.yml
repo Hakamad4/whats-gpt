@@ -9,7 +9,7 @@ provider:
 functions:
   chat:
     image: 585707473057.dkr.ecr.us-east-1.amazonaws.com/hakamada/whats-gpt:latest
-    timeout: 20
+    timeout: 120
     events:
       - httpApi:
           path: /

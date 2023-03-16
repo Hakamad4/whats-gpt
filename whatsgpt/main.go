@@ -1,67 +1,44 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io/ioutil"
+	. "github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
 	"log"
 	"net/http"
-	"net/url"
-
-	. "github.com/aws/aws-lambda-go/events"
+	"whats-gpt/whatsgpt/chatgpt/client"
+	"whats-gpt/whatsgpt/twilio"
 )
 
-func createChatGptRequest(query string) ChatGptRequest {
-	req := ChatGptRequest{
+func streamMessage(twilioRequest twilio.Request) error {
+	request := client.CompletionRequest{
 		Model: "gpt-3.5-turbo",
-		Messages: []Message{
-			{"user", query},
+		Messages: []client.Message{
+			{"user", twilioRequest.Body},
 		},
-		MaxTokens: 150,
+		Stream:    true,
+		MaxTokens: 500,
 	}
-	return req
-}
-
-func GenerateGptText(query string) (string, error) {
-	request := createChatGptRequest(query)
-
-	reqJson, err := json.Marshal(request)
+	completion, err := client.SendCompletion(request)
 	if err != nil {
-		log.Panic("fail to parse json")
-		return "", err
+		return err
 	}
-	log.Print("chatgpt request:", string(reqJson))
-
-	httpRequest := createHttpRequest(err, reqJson)
-	httpResponse, err := http.DefaultClient.Do(httpRequest) //envia a httpRequest e recebe a httpResponse
-	if err != nil {
-		log.Println("fail to send request to chatgpt", err)
-		return "", err
+	if completion.StatusCode != http.StatusOK {
+		return errors.New("ChatGPT returned a non 200 status code")
 	}
-	defer httpResponse.Body.Close()
 
-	responseBody, err := ioutil.ReadAll(httpResponse.Body)
-	log.Print("chatgpt response:", string(responseBody))
-	var response Response
-	err = json.Unmarshal(responseBody, &response)
-	if err != nil {
-		return "", err
+	if completion.Header.Values("Content-Type")[0] == "text/event-stream" {
+		client.StreamMessageWithResponse(*completion, twilioRequest.From)
+	} else {
+		response, err := client.ParseCompletionResponse(*completion)
+		if err != nil {
+			return err
+		}
+		twilio.SendMessage(twilioRequest.From, response.Choices[0].Message.Content)
 	}
-	return response.Choices[0].Message.Content, nil
-}
 
-func createHttpRequest(err error, reqJson []byte) *http.Request {
-	httpRequest, err := http.NewRequest( //isso builda uma httpRequest
-		"POST",
-		"https://api.openai.com/v1/chat/completions",
-		bytes.NewBuffer(reqJson),
-	)
-	httpRequest.Header.Set("Content-Type", "application/json")
-	httpRequest.Header.Set("Authorization", "Bearer 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")
-	return httpRequest
+	return nil
 }
 
 func parseBase64(str string) (string, error) {
@@ -72,20 +49,9 @@ func parseBase64(str string) (string, error) {
 	return string(decodeString), nil
 }
 
-func getBodyFromUrlParams(urlQuery string) (string, error) {
-	data, err := url.ParseQuery(urlQuery)
-	if err != nil {
-		return "", err
-	}
-	if data.Has("Body") {
-		return data.Get("Body"), nil
-	}
-	return "", errors.New("body not found")
-}
-
 func process(request APIGatewayProxyRequest) (APIGatewayProxyResponse, error) {
 	parsed, err := parseBase64(request.Body)
-	result, err := getBodyFromUrlParams(parsed)
+	result, err := twilio.BuildTwilioRequestFromUrlParams(parsed)
 	log.Println("body from twilio: ", result)
 	if err != nil {
 		return APIGatewayProxyResponse{
@@ -93,8 +59,7 @@ func process(request APIGatewayProxyRequest) (APIGatewayProxyResponse, error) {
 			Body:       err.Error(),
 		}, nil
 	}
-	text, err := GenerateGptText(result)
-	fmt.Println("chatgpt generated text ", text)
+	err = streamMessage(result)
 	if err != nil {
 		return APIGatewayProxyResponse{
 			StatusCode: http.StatusInternalServerError,
@@ -103,10 +68,9 @@ func process(request APIGatewayProxyRequest) (APIGatewayProxyResponse, error) {
 	}
 	return APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
-		Body:       text,
 	}, nil
 }
 
 func main() {
-	GenerateGptText("Whats is a GPT-3?")
+	lambda.Start(process)
 }
